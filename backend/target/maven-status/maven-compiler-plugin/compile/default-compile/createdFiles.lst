@@ -1,0 +1,12 @@
+com\signatext\backend\dto\RegistroRequest.class
+com\signatext\backend\dto\LoginRequest.class
+com\signatext\backend\config\SecurityConfig.class
+com\signatext\backend\dto\AuthResponse.class
+com\signatext\backend\repository\UsuarioRepository.class
+com\signatext\backend\SignaTextBackendApplication.class
+com\signatext\backend\entity\Usuario.class
+com\signatext\backend\security\JwtAuthenticationFilter.class
+com\signatext\backend\service\AuthService.class
+com\signatext\backend\security\JwtService.class
+com\signatext\backend\controller\AuthController.class
+com\signatext\backend\controller\HealthController.class

@@ -1,0 +1,12 @@
+C:\Users\fabri\OneDrive\Escritorio\Nueva carpeta\signatext-frontend\backend\src\main\java\com\signatext\backend\config\SecurityConfig.java
+C:\Users\fabri\OneDrive\Escritorio\Nueva carpeta\signatext-frontend\backend\src\main\java\com\signatext\backend\controller\AuthController.java
+C:\Users\fabri\OneDrive\Escritorio\Nueva carpeta\signatext-frontend\backend\src\main\java\com\signatext\backend\controller\HealthController.java
+C:\Users\fabri\OneDrive\Escritorio\Nueva carpeta\signatext-frontend\backend\src\main\java\com\signatext\backend\dto\AuthResponse.java
+C:\Users\fabri\OneDrive\Escritorio\Nueva carpeta\signatext-frontend\backend\src\main\java\com\signatext\backend\dto\LoginRequest.java
+C:\Users\fabri\OneDrive\Escritorio\Nueva carpeta\signatext-frontend\backend\src\main\java\com\signatext\backend\dto\RegistroRequest.java
+C:\Users\fabri\OneDrive\Escritorio\Nueva carpeta\signatext-frontend\backend\src\main\java\com\signatext\backend\entity\Usuario.java
+C:\Users\fabri\OneDrive\Escritorio\Nueva carpeta\signatext-frontend\backend\src\main\java\com\signatext\backend\repository\UsuarioRepository.java
+C:\Users\fabri\OneDrive\Escritorio\Nueva carpeta\signatext-frontend\backend\src\main\java\com\signatext\backend\security\JwtAuthenticationFilter.java
+C:\Users\fabri\OneDrive\Escritorio\Nueva carpeta\signatext-frontend\backend\src\main\java\com\signatext\backend\security\JwtService.java
+C:\Users\fabri\OneDrive\Escritorio\Nueva carpeta\signatext-frontend\backend\src\main\java\com\signatext\backend\service\AuthService.java
+C:\Users\fabri\OneDrive\Escritorio\Nueva carpeta\signatext-frontend\backend\src\main\java\com\signatext\backend\SignaTextBackendApplication.java
