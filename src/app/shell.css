@@ -1,0 +1,80 @@
+:host {
+  display: block;
+  min-height: 100vh;
+  background: #f4f6f8;
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 14px 3%;
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: #111827;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 20px;
+}
+
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.main-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.main-nav a {
+  padding: 10px 12px;
+  border-radius: 8px;
+  color: #4b5563;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.main-nav a:hover,
+.main-nav a.active {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.main-nav a:focus-visible,
+.brand:focus-visible {
+  outline: 3px solid #93c5fd;
+  outline-offset: 3px;
+}
+
+@media (max-width: 760px) {
+  .topbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .main-nav {
+    width: 100%;
+  }
+
+  .main-nav a {
+    flex: 1 1 calc(50% - 8px);
+    text-align: center;
+  }
+}

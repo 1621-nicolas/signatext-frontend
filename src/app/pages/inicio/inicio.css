@@ -1,0 +1,139 @@
+:host {
+  display: block;
+}
+
+.home-page {
+  width: min(1200px, 92%);
+  margin: 0 auto;
+  padding: 56px 0 64px;
+}
+
+.hero {
+  max-width: 820px;
+  margin-bottom: 34px;
+}
+
+.ods-badge {
+  display: inline-flex;
+  padding: 7px 11px;
+  border-radius: 999px;
+  background: #ecfdf3;
+  color: #166534;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.hero h1 {
+  margin: 16px 0 12px;
+  font-size: clamp(36px, 5vw, 60px);
+  line-height: 1.05;
+  color: #111827;
+}
+
+.hero p {
+  margin: 0;
+  color: #667085;
+  font-size: 19px;
+  line-height: 1.6;
+}
+
+.mode-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.mode-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 330px;
+  padding: 24px;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+.mode-icon {
+  font-size: 40px;
+}
+
+.mode-card h2 {
+  margin: 18px 0 10px;
+  color: #111827;
+}
+
+.mode-card p {
+  flex: 1;
+  color: #667085;
+  line-height: 1.6;
+}
+
+.primary-action {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 48px;
+  padding: 0 18px;
+  border-radius: 9px;
+  background: #2563eb;
+  color: #ffffff;
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.primary-action:hover {
+  background: #1d4ed8;
+}
+
+.primary-action:focus-visible {
+  outline: 3px solid #93c5fd;
+  outline-offset: 3px;
+}
+
+.access-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 28px;
+  margin-top: 34px;
+  padding: 28px;
+  border-radius: 16px;
+  background: #111827;
+  color: #ffffff;
+}
+
+.access-section h2 {
+  margin-top: 0;
+}
+
+.access-section p,
+.access-section li {
+  color: #d1d5db;
+  line-height: 1.6;
+}
+
+.access-section ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+@media (max-width: 900px) {
+  .mode-grid,
+  .access-section {
+    grid-template-columns: 1fr;
+  }
+
+  .mode-card {
+    min-height: auto;
+  }
+}
+
+@media (max-width: 600px) {
+  .home-page {
+    width: 94%;
+    padding-top: 32px;
+  }
+
+  .hero p {
+    font-size: 17px;
+  }
+}

@@ -4,9 +4,8 @@ import { App } from './app';
 describe('App', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [App],
-    })
-      .compileComponents();
+      imports: [App]
+    }).compileComponents();
   });
 
   it('should create the app', () => {
@@ -15,10 +14,10 @@ describe('App', () => {
     expect(app).toBeTruthy();
   });
 
-  it('should render title', async () => {
+  it('should render SignaText title', async () => {
     const fixture = TestBed.createComponent(App);
     await fixture.whenStable();
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('h1')?.textContent).toContain('Hello, signatext-frontend');
+    expect(compiled.querySelector('h1')?.textContent).toContain('SignaText');
   });
 });
