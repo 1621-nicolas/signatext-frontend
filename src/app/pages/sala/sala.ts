@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { SalaCameraComponent } from '../../components/sala-camera/sala-camera';
 import { AuthService } from '../../core/services/auth.service';
+import { LspSequenceService } from '../../core/services/lsp-sequence.service';
 import { SalaRealtimeService } from '../../core/services/sala-realtime.service';
 import { MensajeSala, SalaPrivada, SalaService } from '../../core/services/sala.service';
 
@@ -18,6 +19,7 @@ export class SalaComponent implements OnDestroy {
   readonly authService = inject(AuthService);
   private readonly salaService = inject(SalaService);
   private readonly realtimeService = inject(SalaRealtimeService);
+  private readonly lspSequenceService = inject(LspSequenceService);
 
   sala = signal<SalaPrivada | null>(null);
   mensajes = signal<MensajeSala[]>([]);
@@ -116,6 +118,14 @@ export class SalaComponent implements OnDestroy {
     );
   }
 
+  secuenciaRemota(): string {
+    return this.lspSequenceService.buildDisplay(this.tokensRemotos());
+  }
+
+  textoLiteralRemoto(): string {
+    return this.lspSequenceService.buildLiteralText(this.tokensRemotos());
+  }
+
   mensajesTexto(): MensajeSala[] {
     return this.mensajes().filter(mensaje => mensaje.tipo === 'TEXTO');
   }
@@ -151,6 +161,14 @@ export class SalaComponent implements OnDestroy {
   ngOnDestroy(): void {
     this.detenerPolling();
     this.realtimeService.desconectar();
+  }
+
+  private tokensRemotos(): string[] {
+    return this.lspSequenceService.buildRemoteSequence(
+      this.mensajes(),
+      this.authService.usuario()?.idUsuario,
+      12
+    );
   }
 
   private enviarContenido(
