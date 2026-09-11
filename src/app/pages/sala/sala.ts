@@ -31,6 +31,7 @@ export class SalaComponent implements OnDestroy {
   textoMensaje = '';
 
   private roomPollingId: number | null = null;
+  private messageFallbackPollingId: number | null = null;
 
   crearSala(): void {
     if (!this.authService.isLoggedIn() || this.cargando()) {
@@ -186,6 +187,7 @@ export class SalaComponent implements OnDestroy {
     this.codigoIngreso = sala.codigo;
     this.cargarMensajes();
     this.iniciarPollingParticipantes();
+    this.iniciarPollingMensajesFallback();
     this.conectarTiempoReal(sala.codigo);
   }
 
@@ -193,16 +195,43 @@ export class SalaComponent implements OnDestroy {
     this.realtimeService.conectar(
       codigo,
       mensaje => this.agregarMensajeSiNoExiste(mensaje),
-      estado => this.realtimeStatus.set(estado)
+      estado => {
+        this.realtimeStatus.set(estado);
+
+        if (estado === 'Tiempo real conectado') {
+          this.detenerPollingMensajesFallback();
+        } else {
+          this.iniciarPollingMensajesFallback();
+        }
+      }
     );
   }
 
   private iniciarPollingParticipantes(): void {
-    this.detenerPolling();
+    if (this.roomPollingId !== null) {
+      return;
+    }
 
     this.roomPollingId = window.setInterval(() => {
       this.actualizarSala();
     }, 1500);
+  }
+
+  private iniciarPollingMensajesFallback(): void {
+    if (this.messageFallbackPollingId !== null) {
+      return;
+    }
+
+    this.messageFallbackPollingId = window.setInterval(() => {
+      this.cargarMensajes();
+    }, 800);
+  }
+
+  private detenerPollingMensajesFallback(): void {
+    if (this.messageFallbackPollingId !== null) {
+      window.clearInterval(this.messageFallbackPollingId);
+      this.messageFallbackPollingId = null;
+    }
   }
 
   private detenerPolling(): void {
@@ -210,6 +239,8 @@ export class SalaComponent implements OnDestroy {
       window.clearInterval(this.roomPollingId);
       this.roomPollingId = null;
     }
+
+    this.detenerPollingMensajesFallback();
   }
 
   private actualizarSala(): void {
