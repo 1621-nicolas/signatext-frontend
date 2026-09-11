@@ -15,7 +15,7 @@ public class WebSocketConfig implements WebSocketConfigurer {
 
     private final SalaWebSocketHandler salaWebSocketHandler;
     private final JwtWebSocketHandshakeInterceptor handshakeInterceptor;
-    private final String[] allowedOrigins;
+    private final String[] allowedOriginPatterns;
 
     public WebSocketConfig(
             SalaWebSocketHandler salaWebSocketHandler,
@@ -24,7 +24,7 @@ public class WebSocketConfig implements WebSocketConfigurer {
     ) {
         this.salaWebSocketHandler = salaWebSocketHandler;
         this.handshakeInterceptor = handshakeInterceptor;
-        this.allowedOrigins = Arrays.stream(allowedOrigins.split(","))
+        this.allowedOriginPatterns = Arrays.stream(allowedOrigins.split(","))
                 .map(String::trim)
                 .filter(value -> !value.isBlank())
                 .toArray(String[]::new);
@@ -34,6 +34,6 @@ public class WebSocketConfig implements WebSocketConfigurer {
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
         registry.addHandler(salaWebSocketHandler, "/ws/salas")
                 .addInterceptors(handshakeInterceptor)
-                .setAllowedOrigins(allowedOrigins);
+                .setAllowedOriginPatterns(allowedOriginPatterns);
     }
 }
