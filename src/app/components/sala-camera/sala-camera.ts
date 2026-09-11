@@ -35,7 +35,7 @@ export class SalaCameraComponent implements AfterViewInit, OnDestroy {
   handStatus = signal('Sin manos detectadas');
   detectedHands = signal(0);
   currentTranslation = signal('');
-  transmissionStatus = signal('Esperando una seña estable...');
+  transmissionStatus = signal('Esperando una seña...');
 
   private stream: MediaStream | null = null;
   private handLandmarker: HandLandmarker | null = null;
@@ -43,11 +43,12 @@ export class SalaCameraComponent implements AfterViewInit, OnDestroy {
   private detectionRunning = false;
   private lastVideoTime = -1;
   private lastDetectionTime = 0;
-  private candidateTranslation = '';
-  private candidateSince = 0;
   private lastEmittedTranslation = '';
+  private recentTranslations: string[] = [];
+
   private readonly detectionInterval = 50;
-  private readonly stabilityTime = 350;
+  private readonly consensusWindow = 6;
+  private readonly consensusRequired = 4;
 
   async ngAfterViewInit(): Promise<void> {
     await this.initializeHandLandmarker();
@@ -59,6 +60,11 @@ export class SalaCameraComponent implements AfterViewInit, OnDestroy {
     }
 
     try {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        this.cameraStatus.set('El navegador no permite utilizar la cámara');
+        return;
+      }
+
       this.cameraStatus.set('Solicitando permiso...');
 
       this.stream = await navigator.mediaDevices.getUserMedia({
@@ -76,7 +82,7 @@ export class SalaCameraComponent implements AfterViewInit, OnDestroy {
       await video.play();
 
       this.cameraStatus.set('Cámara activa');
-      this.transmissionStatus.set('Esperando una seña estable...');
+      this.transmissionStatus.set('Esperando una seña...');
       this.startDetectionIfReady();
     } catch (error) {
       console.error('ERROR DE CÁMARA EN SALA:', error);
@@ -172,7 +178,10 @@ export class SalaCameraComponent implements AfterViewInit, OnDestroy {
 
     const now = performance.now();
 
-    if (now - this.lastDetectionTime < this.detectionInterval || video.currentTime === this.lastVideoTime) {
+    if (
+      now - this.lastDetectionTime < this.detectionInterval ||
+      video.currentTime === this.lastVideoTime
+    ) {
       this.scheduleNextDetection();
       return;
     }
@@ -198,23 +207,30 @@ export class SalaCameraComponent implements AfterViewInit, OnDestroy {
       if (count === 0) {
         this.handStatus.set('Sin manos detectadas');
         this.currentTranslation.set('');
-        this.candidateTranslation = '';
-        this.candidateSince = 0;
+        this.recentTranslations = [];
         this.lastEmittedTranslation = '';
-        this.transmissionStatus.set('Esperando una seña estable...');
+        this.transmissionStatus.set('Esperando una seña...');
       } else {
         this.handStatus.set(count === 1 ? 'Mano detectada' : 'Dos manos detectadas');
 
-        const labels = results.landmarks.map((landmarks, index) => {
+        const displayLabels: string[] = [];
+        const semanticLabels: string[] = [];
+
+        results.landmarks.forEach((landmarks, index) => {
           const side = results.handedness[index]?.[0]?.categoryName === 'Left'
             ? 'Izquierda'
             : 'Derecha';
-          return `${side}: ${this.classifyHand(landmarks)}`;
+          const shape = this.classifyHand(landmarks);
+
+          displayLabels.push(`${side}: ${shape}`);
+          semanticLabels.push(shape);
         });
 
-        const translation = labels.join(' · ');
-        this.currentTranslation.set(translation);
-        this.processAutomaticTranslation(translation, now);
+        const displayTranslation = displayLabels.join(' · ');
+        const semanticTranslation = semanticLabels.sort().join(' + ');
+
+        this.currentTranslation.set(displayTranslation);
+        this.processAutomaticTranslation(semanticTranslation);
       }
 
       const drawingUtils = new DrawingUtils(context);
@@ -238,15 +254,23 @@ export class SalaCameraComponent implements AfterViewInit, OnDestroy {
     this.scheduleNextDetection();
   };
 
-  private processAutomaticTranslation(translation: string, now: number): void {
-    if (translation !== this.candidateTranslation) {
-      this.candidateTranslation = translation;
-      this.candidateSince = now;
-      this.transmissionStatus.set('Confirmando seña...');
+  private processAutomaticTranslation(translation: string): void {
+    if (!translation) {
       return;
     }
 
-    if (now - this.candidateSince < this.stabilityTime) {
+    this.recentTranslations.push(translation);
+
+    if (this.recentTranslations.length > this.consensusWindow) {
+      this.recentTranslations.shift();
+    }
+
+    const occurrences = this.recentTranslations.filter(
+      item => item === translation
+    ).length;
+
+    if (occurrences < this.consensusRequired) {
+      this.transmissionStatus.set('Confirmando seña...');
       return;
     }
 
@@ -264,8 +288,7 @@ export class SalaCameraComponent implements AfterViewInit, OnDestroy {
     this.detectedHands.set(0);
     this.currentTranslation.set('');
     this.handStatus.set('Sin manos detectadas');
-    this.candidateTranslation = '';
-    this.candidateSince = 0;
+    this.recentTranslations = [];
     this.lastEmittedTranslation = '';
   }
 
