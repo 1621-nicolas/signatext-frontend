@@ -8,6 +8,7 @@ import com.signatext.backend.entity.MensajeSala;
 import com.signatext.backend.entity.ParticipanteSala;
 import com.signatext.backend.entity.SalaPrivada;
 import com.signatext.backend.entity.Usuario;
+import com.signatext.backend.realtime.SalaWebSocketHandler;
 import com.signatext.backend.repository.MensajeSalaRepository;
 import com.signatext.backend.repository.ParticipanteSalaRepository;
 import com.signatext.backend.repository.SalaPrivadaRepository;
@@ -27,18 +28,21 @@ public class SalaPrivadaService {
     private final ParticipanteSalaRepository participanteRepository;
     private final MensajeSalaRepository mensajeRepository;
     private final UsuarioRepository usuarioRepository;
+    private final SalaWebSocketHandler salaWebSocketHandler;
     private final SecureRandom random = new SecureRandom();
 
     public SalaPrivadaService(
             SalaPrivadaRepository salaRepository,
             ParticipanteSalaRepository participanteRepository,
             MensajeSalaRepository mensajeRepository,
-            UsuarioRepository usuarioRepository
+            UsuarioRepository usuarioRepository,
+            SalaWebSocketHandler salaWebSocketHandler
     ) {
         this.salaRepository = salaRepository;
         this.participanteRepository = participanteRepository;
         this.mensajeRepository = mensajeRepository;
         this.usuarioRepository = usuarioRepository;
+        this.salaWebSocketHandler = salaWebSocketHandler;
     }
 
     @Transactional
@@ -154,7 +158,9 @@ public class SalaPrivadaService {
         mensaje.setTipo(tipo);
         mensaje.setContenido(request.contenido().trim());
 
-        return toMensajeResponse(mensajeRepository.save(mensaje));
+        MensajeSalaResponse response = toMensajeResponse(mensajeRepository.save(mensaje));
+        salaWebSocketHandler.publicarMensaje(sala.getCodigo(), response);
+        return response;
     }
 
     private Usuario obtenerUsuario(String correo) {
