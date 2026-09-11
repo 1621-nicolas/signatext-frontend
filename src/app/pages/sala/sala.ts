@@ -2,13 +2,14 @@ import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { SalaCameraComponent } from '../../components/sala-camera/sala-camera';
 import { AuthService } from '../../core/services/auth.service';
 import { MensajeSala, SalaPrivada, SalaService } from '../../core/services/sala.service';
 
 @Component({
   selector: 'app-sala',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, SalaCameraComponent],
   templateUrl: './sala.html',
   styleUrl: './sala.css'
 })
@@ -86,20 +87,27 @@ export class SalaComponent implements OnDestroy {
       return;
     }
 
-    this.error.set('');
-    this.enviando.set(true);
+    this.enviarContenido(contenido, tipo, true);
+  }
 
-    this.salaService.enviarMensaje(sala.codigo, contenido, tipo).subscribe({
-      next: () => {
-        this.enviando.set(false);
-        this.textoMensaje = '';
-        this.cargarMensajes();
-      },
-      error: response => {
-        this.enviando.set(false);
-        this.error.set(this.mensajeError(response?.status));
-      }
-    });
+  enviarTraduccionCamara(texto: string): void {
+    const contenido = texto.trim();
+
+    if (!this.sala() || !contenido || this.enviando()) {
+      return;
+    }
+
+    this.enviarContenido(contenido, 'TRADUCCION', false);
+  }
+
+  traduccionesRecibidas(): MensajeSala[] {
+    return this.mensajes().filter(
+      mensaje => mensaje.tipo === 'TRADUCCION' && !this.esMio(mensaje)
+    );
+  }
+
+  mensajesTexto(): MensajeSala[] {
+    return this.mensajes().filter(mensaje => mensaje.tipo === 'TEXTO');
   }
 
   salirSala(): void {
@@ -132,6 +140,38 @@ export class SalaComponent implements OnDestroy {
 
   ngOnDestroy(): void {
     this.detenerPolling();
+  }
+
+  private enviarContenido(
+    contenido: string,
+    tipo: 'TEXTO' | 'TRADUCCION',
+    limpiarTexto: boolean
+  ): void {
+    const sala = this.sala();
+
+    if (!sala) {
+      return;
+    }
+
+    this.error.set('');
+    this.enviando.set(true);
+
+    this.salaService.enviarMensaje(sala.codigo, contenido, tipo).subscribe({
+      next: () => {
+        this.enviando.set(false);
+        if (limpiarTexto) {
+          this.textoMensaje = '';
+        }
+        this.cargarMensajes();
+        if (tipo === 'TRADUCCION') {
+          this.aviso.set('Traducción enviada a la otra persona.');
+        }
+      },
+      error: response => {
+        this.enviando.set(false);
+        this.error.set(this.mensajeError(response?.status));
+      }
+    });
   }
 
   private entrarEnSala(sala: SalaPrivada): void {
