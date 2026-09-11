@@ -1,0 +1,65 @@
+<section class="camera-panel" aria-labelledby="camera-title">
+  <div class="panel-heading">
+    <div>
+      <span class="eyebrow">Tu cámara</span>
+      <h3 id="camera-title">Traducción local</h3>
+    </div>
+    <span class="status-pill" [class.active]="cameraStatus() === 'Cámara activa'">
+      {{ cameraStatus() }}
+    </span>
+  </div>
+
+  <div class="camera-stage">
+    <video #video autoplay muted playsinline></video>
+    <canvas #canvas></canvas>
+
+    @if (cameraStatus() !== 'Cámara activa') {
+      <div class="camera-placeholder">
+        <strong>Cámara apagada</strong>
+        <span>Actívala para comenzar a detectar tus manos.</span>
+      </div>
+    }
+  </div>
+
+  <div class="camera-actions">
+    <button type="button" (click)="startCamera()">Activar cámara</button>
+    <button type="button" class="secondary" (click)="stopCamera()">Detener</button>
+  </div>
+
+  <div class="recognition-status" aria-live="polite">
+    <div>
+      <span>Detector</span>
+      <strong>{{ modelStatus() }}</strong>
+    </div>
+    <div>
+      <span>Manos</span>
+      <strong>{{ handStatus() }}</strong>
+    </div>
+    <div>
+      <span>Cantidad</span>
+      <strong>{{ detectedHands() }}</strong>
+    </div>
+  </div>
+
+  <div class="translation-preview">
+    <span class="preview-label">Reconocimiento actual</span>
+
+    @if (currentTranslation()) {
+      <strong>{{ currentTranslation() }}</strong>
+    } @else {
+      <span class="empty-text">Esperando una seña...</span>
+    }
+
+    <button
+      type="button"
+      class="send-translation"
+      (click)="sendTranslation()"
+      [disabled]="!currentTranslation()">
+      Enviar traducción a la otra persona
+    </button>
+
+    <small>
+      Esta etapa utiliza reconocimiento de configuración de manos. El vocabulario LSP entrenado se conectará a este mismo envío en el siguiente avance del modelo.
+    </small>
+  </div>
+</section>
