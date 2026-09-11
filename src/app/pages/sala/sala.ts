@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { SalaCameraComponent } from '../../components/sala-camera/sala-camera';
 import { AuthService } from '../../core/services/auth.service';
+import { SalaRealtimeService } from '../../core/services/sala-realtime.service';
 import { MensajeSala, SalaPrivada, SalaService } from '../../core/services/sala.service';
 
 @Component({
@@ -16,6 +17,7 @@ import { MensajeSala, SalaPrivada, SalaService } from '../../core/services/sala.
 export class SalaComponent implements OnDestroy {
   readonly authService = inject(AuthService);
   private readonly salaService = inject(SalaService);
+  private readonly realtimeService = inject(SalaRealtimeService);
 
   sala = signal<SalaPrivada | null>(null);
   mensajes = signal<MensajeSala[]>([]);
@@ -23,12 +25,12 @@ export class SalaComponent implements OnDestroy {
   enviando = signal(false);
   error = signal('');
   aviso = signal('');
+  realtimeStatus = signal('Desconectado');
 
   codigoIngreso = '';
   textoMensaje = '';
 
   private roomPollingId: number | null = null;
-  private messagePollingId: number | null = null;
 
   crearSala(): void {
     if (!this.authService.isLoggedIn() || this.cargando()) {
@@ -100,12 +102,7 @@ export class SalaComponent implements OnDestroy {
     }
 
     this.salaService.enviarMensaje(sala.codigo, contenido, 'TRADUCCION').subscribe({
-      next: mensaje => {
-        const actuales = this.mensajes();
-        if (!actuales.some(item => item.idMensaje === mensaje.idMensaje)) {
-          this.mensajes.set([...actuales, mensaje]);
-        }
-      },
+      next: mensaje => this.agregarMensajeSiNoExiste(mensaje),
       error: response => {
         this.error.set(this.mensajeError(response?.status));
       }
@@ -152,6 +149,7 @@ export class SalaComponent implements OnDestroy {
 
   ngOnDestroy(): void {
     this.detenerPolling();
+    this.realtimeService.desconectar();
   }
 
   private enviarContenido(
@@ -174,11 +172,7 @@ export class SalaComponent implements OnDestroy {
         if (limpiarTexto) {
           this.textoMensaje = '';
         }
-
-        const actuales = this.mensajes();
-        if (!actuales.some(item => item.idMensaje === mensaje.idMensaje)) {
-          this.mensajes.set([...actuales, mensaje]);
-        }
+        this.agregarMensajeSiNoExiste(mensaje);
       },
       error: response => {
         this.enviando.set(false);
@@ -191,30 +185,30 @@ export class SalaComponent implements OnDestroy {
     this.sala.set(sala);
     this.codigoIngreso = sala.codigo;
     this.cargarMensajes();
-    this.iniciarPolling();
+    this.iniciarPollingParticipantes();
+    this.conectarTiempoReal(sala.codigo);
   }
 
-  private iniciarPolling(): void {
+  private conectarTiempoReal(codigo: string): void {
+    this.realtimeService.conectar(
+      codigo,
+      mensaje => this.agregarMensajeSiNoExiste(mensaje),
+      estado => this.realtimeStatus.set(estado)
+    );
+  }
+
+  private iniciarPollingParticipantes(): void {
     this.detenerPolling();
 
     this.roomPollingId = window.setInterval(() => {
       this.actualizarSala();
     }, 1500);
-
-    this.messagePollingId = window.setInterval(() => {
-      this.cargarMensajes();
-    }, 300);
   }
 
   private detenerPolling(): void {
     if (this.roomPollingId !== null) {
       window.clearInterval(this.roomPollingId);
       this.roomPollingId = null;
-    }
-
-    if (this.messagePollingId !== null) {
-      window.clearInterval(this.messagePollingId);
-      this.messagePollingId = null;
     }
   }
 
@@ -240,8 +234,19 @@ export class SalaComponent implements OnDestroy {
     });
   }
 
+  private agregarMensajeSiNoExiste(mensaje: MensajeSala): void {
+    const actuales = this.mensajes();
+    if (actuales.some(item => item.idMensaje === mensaje.idMensaje)) {
+      return;
+    }
+
+    this.mensajes.set([...actuales, mensaje]);
+  }
+
   private limpiarSala(): void {
     this.detenerPolling();
+    this.realtimeService.desconectar();
+    this.realtimeStatus.set('Desconectado');
     this.sala.set(null);
     this.mensajes.set([]);
     this.textoMensaje = '';
