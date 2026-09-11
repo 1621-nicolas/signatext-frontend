@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -12,6 +12,10 @@ import { AuthService } from '../../core/services/auth.service';
   styleUrl: './registro.css'
 })
 export class RegistroComponent {
+  private readonly fb = inject(FormBuilder);
+  private readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
+
   enviando = signal(false);
   error = signal('');
 
@@ -20,12 +24,6 @@ export class RegistroComponent {
     correo: ['', [Validators.required, Validators.email, Validators.maxLength(150)]],
     password: ['', [Validators.required, Validators.minLength(8), Validators.maxLength(72)]]
   });
-
-  constructor(
-    private readonly fb: FormBuilder,
-    private readonly authService: AuthService,
-    private readonly router: Router
-  ) {}
 
   registrar(): void {
     if (this.form.invalid || this.enviando()) {

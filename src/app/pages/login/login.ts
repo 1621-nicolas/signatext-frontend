@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -12,6 +12,10 @@ import { AuthService } from '../../core/services/auth.service';
   styleUrl: './login.css'
 })
 export class LoginComponent {
+  private readonly fb = inject(FormBuilder);
+  private readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
+
   enviando = signal(false);
   error = signal('');
 
@@ -19,12 +23,6 @@ export class LoginComponent {
     correo: ['', [Validators.required, Validators.email]],
     password: ['', [Validators.required]]
   });
-
-  constructor(
-    private readonly fb: FormBuilder,
-    private readonly authService: AuthService,
-    private readonly router: Router
-  ) {}
 
   ingresar(): void {
     if (this.form.invalid || this.enviando()) {
