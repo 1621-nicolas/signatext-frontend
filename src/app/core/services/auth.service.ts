@@ -24,7 +24,9 @@ export interface LoginRequest {
   providedIn: 'root'
 })
 export class AuthService {
-  private readonly apiUrl = 'http://localhost:8081/api/auth';
+  private readonly backendProtocol = window.location.protocol === 'https:' ? 'https' : 'http';
+  private readonly backendHost = window.location.hostname || 'localhost';
+  private readonly apiUrl = `${this.backendProtocol}://${this.backendHost}:8081/api/auth`;
 
   private readonly usuarioSignal = signal<AuthResponse | null>(
     this.readStoredUser()
