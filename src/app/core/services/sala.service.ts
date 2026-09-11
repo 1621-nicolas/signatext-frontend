@@ -28,7 +28,9 @@ export interface MensajeSala {
   providedIn: 'root'
 })
 export class SalaService {
-  private readonly apiUrl = 'http://localhost:8081/api/salas';
+  private readonly backendProtocol = window.location.protocol === 'https:' ? 'https' : 'http';
+  private readonly backendHost = window.location.hostname || 'localhost';
+  private readonly apiUrl = `${this.backendProtocol}://${this.backendHost}:8081/api/salas`;
 
   constructor(private readonly http: HttpClient) {}
 
