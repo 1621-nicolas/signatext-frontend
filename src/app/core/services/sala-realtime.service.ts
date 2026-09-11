@@ -40,7 +40,9 @@ export class SalaRealtimeService {
 
       onEstado?.('Conectando...');
 
-      const url = `ws://localhost:8081/ws/salas?codigo=${encodeURIComponent(this.codigoActual)}&token=${encodeURIComponent(token)}`;
+      const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+      const host = window.location.hostname || 'localhost';
+      const url = `${protocol}://${host}:8081/ws/salas?codigo=${encodeURIComponent(this.codigoActual)}&token=${encodeURIComponent(token)}`;
       this.socket = new WebSocket(url);
 
       this.socket.onopen = () => {
