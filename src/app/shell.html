@@ -10,6 +10,20 @@
     <a routerLink="/sala" routerLinkActive="active">Sala privada</a>
     <a routerLink="/llamada" routerLinkActive="active">Videollamada</a>
   </nav>
+
+  <div class="auth-nav">
+    @if (authService.usuario()) {
+      <span class="user-name">
+        {{ authService.usuario()?.nombre }}
+      </span>
+      <button type="button" class="logout-button" (click)="cerrarSesion()">
+        Cerrar sesión
+      </button>
+    } @else {
+      <a routerLink="/login" routerLinkActive="active">Iniciar sesión</a>
+      <a class="register-link" routerLink="/registro">Crear cuenta</a>
+    }
+  </div>
 </header>
 
 <router-outlet></router-outlet>
