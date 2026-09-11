@@ -6,6 +6,7 @@ import {
   OnDestroy,
   Output,
   ViewChild,
+  inject,
   signal
 } from '@angular/core';
 import {
@@ -13,6 +14,7 @@ import {
   FilesetResolver,
   HandLandmarker
 } from '@mediapipe/tasks-vision';
+import { LspSequenceService } from '../../core/services/lsp-sequence.service';
 
 @Component({
   selector: 'app-sala-camera',
@@ -30,12 +32,16 @@ export class SalaCameraComponent implements AfterViewInit, OnDestroy {
   @Output()
   translationSent = new EventEmitter<string>();
 
+  private readonly lspSequenceService = inject(LspSequenceService);
+
   cameraStatus = signal('Cámara desactivada');
   modelStatus = signal('Cargando detector...');
   handStatus = signal('Sin manos detectadas');
   detectedHands = signal(0);
   currentTranslation = signal('');
   transmissionStatus = signal('Esperando una seña...');
+  recognizedSequence = signal<string[]>([]);
+  sequencePreview = signal('');
 
   private stream: MediaStream | null = null;
   private handLandmarker: HandLandmarker | null = null;
@@ -49,6 +55,7 @@ export class SalaCameraComponent implements AfterViewInit, OnDestroy {
   private readonly detectionInterval = 50;
   private readonly consensusWindow = 5;
   private readonly consensusRequired = 3;
+  private readonly maxSequenceTokens = 12;
 
   async ngAfterViewInit(): Promise<void> {
     await this.initializeHandLandmarker();
@@ -117,6 +124,11 @@ export class SalaCameraComponent implements AfterViewInit, OnDestroy {
     this.resetRecognition();
     this.cameraStatus.set('Cámara desactivada');
     this.transmissionStatus.set('Transmisión detenida');
+  }
+
+  clearSequence(): void {
+    this.recognizedSequence.set([]);
+    this.sequencePreview.set('');
   }
 
   ngOnDestroy(): void {
@@ -291,8 +303,20 @@ export class SalaCameraComponent implements AfterViewInit, OnDestroy {
     }
 
     this.lastEmittedTranslation = winner;
+    this.addToSequence(winner);
     this.transmissionStatus.set('Traducción compartida en tiempo real');
     this.translationSent.emit(winner);
+  }
+
+  private addToSequence(token: string): void {
+    const next = this.lspSequenceService.appendToken(
+      this.recognizedSequence(),
+      token,
+      this.maxSequenceTokens
+    );
+
+    this.recognizedSequence.set(next);
+    this.sequencePreview.set(this.lspSequenceService.buildDisplay(next));
   }
 
   private resetRecognition(): void {

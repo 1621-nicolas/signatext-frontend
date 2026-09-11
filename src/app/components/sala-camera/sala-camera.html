@@ -56,7 +56,29 @@
     </div>
 
     <small>
-      No necesitas pulsar ningún botón. Cuando SignaText mantiene una detección estable durante unos instantes, la traducción se comparte automáticamente con la otra persona.
+      No necesitas pulsar ningún botón. Cuando SignaText confirma una detección, la comparte automáticamente con la otra persona.
+    </small>
+  </div>
+
+  <div class="translation-preview" aria-live="polite">
+    <span class="preview-label">Secuencia en construcción</span>
+
+    @if (sequencePreview()) {
+      <strong>{{ sequencePreview() }}</strong>
+    } @else {
+      <span class="empty-text">Las señas confirmadas se irán acumulando aquí.</span>
+    }
+
+    <button
+      type="button"
+      class="secondary"
+      (click)="clearSequence()"
+      [disabled]="recognizedSequence().length === 0">
+      Limpiar secuencia
+    </button>
+
+    <small>
+      Esta secuencia todavía usa configuraciones técnicas de mano. Cuando conectemos el vocabulario LSP validado, este mismo bloque formará palabras y oraciones.
     </small>
   </div>
 </section>

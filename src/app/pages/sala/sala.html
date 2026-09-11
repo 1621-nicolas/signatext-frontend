@@ -91,6 +91,19 @@
             <p>Las señas reconocidas en el otro dispositivo aparecen aquí automáticamente mediante WebSocket.</p>
           </div>
 
+          @if (secuenciaRemota()) {
+            <article class="translation-message">
+              <div class="translation-meta">
+                <strong>Secuencia reconocida</strong>
+                <span>En construcción</span>
+              </div>
+              <p>{{ secuenciaRemota() }}</p>
+              <small>
+                Lectura literal provisional: {{ textoLiteralRemoto() }}
+              </small>
+            </article>
+          }
+
           <div class="translation-feed">
             @if (traduccionesRecibidas().length === 0) {
               <div class="empty-translation">
