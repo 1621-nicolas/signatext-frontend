@@ -47,8 +47,8 @@ export class SalaCameraComponent implements AfterViewInit, OnDestroy {
   private recentTranslations: string[] = [];
 
   private readonly detectionInterval = 50;
-  private readonly consensusWindow = 6;
-  private readonly consensusRequired = 4;
+  private readonly consensusWindow = 5;
+  private readonly consensusRequired = 3;
 
   async ngAfterViewInit(): Promise<void> {
     await this.initializeHandLandmarker();
@@ -265,23 +265,34 @@ export class SalaCameraComponent implements AfterViewInit, OnDestroy {
       this.recentTranslations.shift();
     }
 
-    const occurrences = this.recentTranslations.filter(
-      item => item === translation
-    ).length;
+    const counts = new Map<string, number>();
+    for (const item of this.recentTranslations) {
+      counts.set(item, (counts.get(item) ?? 0) + 1);
+    }
 
-    if (occurrences < this.consensusRequired) {
+    let winner = '';
+    let winnerCount = 0;
+
+    for (const [item, count] of counts) {
+      if (count > winnerCount) {
+        winner = item;
+        winnerCount = count;
+      }
+    }
+
+    if (winnerCount < this.consensusRequired) {
       this.transmissionStatus.set('Confirmando seña...');
       return;
     }
 
-    if (translation === this.lastEmittedTranslation) {
+    if (winner === this.lastEmittedTranslation) {
       this.transmissionStatus.set('Traducción compartida en tiempo real');
       return;
     }
 
-    this.lastEmittedTranslation = translation;
+    this.lastEmittedTranslation = winner;
     this.transmissionStatus.set('Traducción compartida en tiempo real');
-    this.translationSent.emit(translation);
+    this.translationSent.emit(winner);
   }
 
   private resetRecognition(): void {
