@@ -41,7 +41,7 @@
     </div>
   </div>
 
-  <div class="translation-preview">
+  <div class="translation-preview" aria-live="polite">
     <span class="preview-label">Reconocimiento actual</span>
 
     @if (currentTranslation()) {
@@ -50,16 +50,13 @@
       <span class="empty-text">Esperando una seña...</span>
     }
 
-    <button
-      type="button"
-      class="send-translation"
-      (click)="sendTranslation()"
-      [disabled]="!currentTranslation()">
-      Enviar traducción a la otra persona
-    </button>
+    <div class="automatic-sharing">
+      <span class="live-dot" aria-hidden="true"></span>
+      <strong>{{ transmissionStatus() }}</strong>
+    </div>
 
     <small>
-      Esta etapa utiliza reconocimiento de configuración de manos. El vocabulario LSP entrenado se conectará a este mismo envío en el siguiente avance del modelo.
+      No necesitas pulsar ningún botón. Cuando SignaText mantiene una detección estable durante unos instantes, la traducción se comparte automáticamente con la otra persona.
     </small>
   </div>
 </section>

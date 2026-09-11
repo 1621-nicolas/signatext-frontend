@@ -27,7 +27,8 @@ export class SalaComponent implements OnDestroy {
   codigoIngreso = '';
   textoMensaje = '';
 
-  private pollingId: number | null = null;
+  private roomPollingId: number | null = null;
+  private messagePollingId: number | null = null;
 
   crearSala(): void {
     if (!this.authService.isLoggedIn() || this.cargando()) {
@@ -91,13 +92,24 @@ export class SalaComponent implements OnDestroy {
   }
 
   enviarTraduccionCamara(texto: string): void {
+    const sala = this.sala();
     const contenido = texto.trim();
 
-    if (!this.sala() || !contenido || this.enviando()) {
+    if (!sala || !contenido) {
       return;
     }
 
-    this.enviarContenido(contenido, 'TRADUCCION', false);
+    this.salaService.enviarMensaje(sala.codigo, contenido, 'TRADUCCION').subscribe({
+      next: mensaje => {
+        const actuales = this.mensajes();
+        if (!actuales.some(item => item.idMensaje === mensaje.idMensaje)) {
+          this.mensajes.set([...actuales, mensaje]);
+        }
+      },
+      error: response => {
+        this.error.set(this.mensajeError(response?.status));
+      }
+    });
   }
 
   traduccionesRecibidas(): MensajeSala[] {
@@ -157,14 +169,15 @@ export class SalaComponent implements OnDestroy {
     this.enviando.set(true);
 
     this.salaService.enviarMensaje(sala.codigo, contenido, tipo).subscribe({
-      next: () => {
+      next: mensaje => {
         this.enviando.set(false);
         if (limpiarTexto) {
           this.textoMensaje = '';
         }
-        this.cargarMensajes();
-        if (tipo === 'TRADUCCION') {
-          this.aviso.set('Traducción enviada a la otra persona.');
+
+        const actuales = this.mensajes();
+        if (!actuales.some(item => item.idMensaje === mensaje.idMensaje)) {
+          this.mensajes.set([...actuales, mensaje]);
         }
       },
       error: response => {
@@ -183,16 +196,25 @@ export class SalaComponent implements OnDestroy {
 
   private iniciarPolling(): void {
     this.detenerPolling();
-    this.pollingId = window.setInterval(() => {
+
+    this.roomPollingId = window.setInterval(() => {
       this.actualizarSala();
-      this.cargarMensajes();
     }, 1500);
+
+    this.messagePollingId = window.setInterval(() => {
+      this.cargarMensajes();
+    }, 300);
   }
 
   private detenerPolling(): void {
-    if (this.pollingId !== null) {
-      window.clearInterval(this.pollingId);
-      this.pollingId = null;
+    if (this.roomPollingId !== null) {
+      window.clearInterval(this.roomPollingId);
+      this.roomPollingId = null;
+    }
+
+    if (this.messagePollingId !== null) {
+      window.clearInterval(this.messagePollingId);
+      this.messagePollingId = null;
     }
   }
 
