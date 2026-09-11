@@ -1,26 +1,127 @@
 <main class="page-shell">
   <section class="intro-card">
     <span class="eyebrow">Sala privada</span>
-    <h1>Comparte traducciones entre dos dispositivos</h1>
+    <h1>Comunicación entre dos dispositivos</h1>
     <p>
-      Este modo permitirá que dos personas cercanas compartan texto, traducciones y mensajes usando un código de sala o un QR, sin necesidad de transmitir video.
+      Comparte mensajes y traducciones entre dos personas mediante un código de seis dígitos, sin necesidad de transmitir video.
     </p>
   </section>
 
-  <section class="room-grid">
-    <article class="room-card">
-      <h2>Crear una sala</h2>
-      <p>Generaremos un código temporal para compartir con la otra persona.</p>
-      <button type="button" disabled>Crear sala</button>
-      <small>Disponible en el siguiente avance.</small>
-    </article>
+  @if (!authService.isLoggedIn()) {
+    <section class="login-required" aria-live="polite">
+      <div>
+        <h2>Inicia sesión para usar una sala privada</h2>
+        <p>El traductor local seguirá disponible sin cuenta, pero las salas privadas necesitan identificar a sus participantes.</p>
+      </div>
+      <a routerLink="/login">Iniciar sesión</a>
+    </section>
+  } @else if (!sala()) {
+    <section class="room-grid">
+      <article class="room-card">
+        <span class="step">Opción 1</span>
+        <h2>Crear una sala</h2>
+        <p>Generaremos un código temporal para compartir con la otra persona.</p>
+        <button type="button" (click)="crearSala()" [disabled]="cargando()">
+          {{ cargando() ? 'Creando...' : 'Crear sala privada' }}
+        </button>
+      </article>
 
-    <article class="room-card">
-      <h2>Unirse a una sala</h2>
-      <label for="room-code">Código de sala</label>
-      <input id="room-code" type="text" placeholder="Ej. 482913" disabled>
-      <button type="button" disabled>Unirme</button>
-      <small>Disponible en el siguiente avance.</small>
-    </article>
-  </section>
+      <article class="room-card">
+        <span class="step">Opción 2</span>
+        <h2>Unirse a una sala</h2>
+        <p>Escribe el código de seis dígitos que te compartió la otra persona.</p>
+        <label for="room-code">Código de sala</label>
+        <input
+          id="room-code"
+          type="text"
+          inputmode="numeric"
+          maxlength="6"
+          autocomplete="off"
+          placeholder="Ej. 482913"
+          [(ngModel)]="codigoIngreso"
+          (keyup.enter)="unirseSala()">
+        <button type="button" (click)="unirseSala()" [disabled]="cargando()">
+          {{ cargando() ? 'Conectando...' : 'Unirme a la sala' }}
+        </button>
+      </article>
+    </section>
+  } @else {
+    <section class="active-room" aria-labelledby="room-title">
+      <div class="room-header">
+        <div>
+          <span class="eyebrow">Sala activa</span>
+          <h2 id="room-title">Código {{ sala()!.codigo }}</h2>
+          <p>{{ sala()!.participantes.length }}/2 participantes conectados</p>
+        </div>
+
+        <div class="room-actions">
+          <button type="button" class="secondary-button" (click)="copiarCodigo()">Copiar código</button>
+          <button type="button" class="danger-button" (click)="salirSala()">Salir</button>
+        </div>
+      </div>
+
+      <div class="participants" aria-label="Participantes de la sala">
+        @for (participante of sala()!.participantes; track participante.idUsuario) {
+          <span class="participant-chip">
+            <span class="status-dot" aria-hidden="true"></span>
+            {{ participante.nombre }}
+          </span>
+        }
+
+        @if (sala()!.participantes.length < 2) {
+          <span class="waiting-chip">Esperando a la otra persona...</span>
+        }
+      </div>
+
+      <div class="conversation" aria-live="polite" aria-label="Conversación de la sala">
+        @if (mensajes().length === 0) {
+          <div class="empty-conversation">
+            <strong>La conversación está vacía</strong>
+            <span>Envía un mensaje para comenzar.</span>
+          </div>
+        }
+
+        @for (mensaje of mensajes(); track mensaje.idMensaje) {
+          <article class="message" [class.mine]="esMio(mensaje)" [class.translation]="mensaje.tipo === 'TRADUCCION'">
+            <div class="message-meta">
+              <strong>{{ esMio(mensaje) ? 'Tú' : mensaje.nombre }}</strong>
+              @if (mensaje.tipo === 'TRADUCCION') {
+                <span class="translation-badge">Traducción LSP</span>
+              }
+            </div>
+            <p>{{ mensaje.contenido }}</p>
+            <time [attr.datetime]="mensaje.fecha">{{ mensaje.fecha | date:'HH:mm' }}</time>
+          </article>
+        }
+      </div>
+
+      <div class="composer">
+        <label for="message-text">Mensaje</label>
+        <textarea
+          id="message-text"
+          rows="3"
+          maxlength="1000"
+          placeholder="Escribe un mensaje..."
+          [(ngModel)]="textoMensaje"></textarea>
+
+        <div class="composer-actions">
+          <button type="button" (click)="enviar('TEXTO')" [disabled]="enviando() || !textoMensaje.trim()">
+            {{ enviando() ? 'Enviando...' : 'Enviar mensaje' }}
+          </button>
+          <button type="button" class="translation-button" (click)="enviar('TRADUCCION')" [disabled]="enviando() || !textoMensaje.trim()">
+            Enviar como traducción
+          </button>
+        </div>
+        <small>El botón de traducción nos permitirá conectar después el reconocimiento LSP directamente con esta sala.</small>
+      </div>
+    </section>
+  }
+
+  @if (error()) {
+    <p class="feedback error-message" role="alert">{{ error() }}</p>
+  }
+
+  @if (aviso()) {
+    <p class="feedback success-message" aria-live="polite">{{ aviso() }}</p>
+  }
 </main>
