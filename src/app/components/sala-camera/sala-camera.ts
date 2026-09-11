@@ -35,6 +35,7 @@ export class SalaCameraComponent implements AfterViewInit, OnDestroy {
   handStatus = signal('Sin manos detectadas');
   detectedHands = signal(0);
   currentTranslation = signal('');
+  transmissionStatus = signal('Esperando una seña estable...');
 
   private stream: MediaStream | null = null;
   private handLandmarker: HandLandmarker | null = null;
@@ -42,7 +43,11 @@ export class SalaCameraComponent implements AfterViewInit, OnDestroy {
   private detectionRunning = false;
   private lastVideoTime = -1;
   private lastDetectionTime = 0;
+  private candidateTranslation = '';
+  private candidateSince = 0;
+  private lastEmittedTranslation = '';
   private readonly detectionInterval = 50;
+  private readonly stabilityTime = 350;
 
   async ngAfterViewInit(): Promise<void> {
     await this.initializeHandLandmarker();
@@ -71,6 +76,7 @@ export class SalaCameraComponent implements AfterViewInit, OnDestroy {
       await video.play();
 
       this.cameraStatus.set('Cámara activa');
+      this.transmissionStatus.set('Esperando una seña estable...');
       this.startDetectionIfReady();
     } catch (error) {
       console.error('ERROR DE CÁMARA EN SALA:', error);
@@ -102,20 +108,9 @@ export class SalaCameraComponent implements AfterViewInit, OnDestroy {
       canvas.getContext('2d')?.clearRect(0, 0, canvas.width, canvas.height);
     }
 
-    this.detectedHands.set(0);
-    this.currentTranslation.set('');
-    this.handStatus.set('Sin manos detectadas');
+    this.resetRecognition();
     this.cameraStatus.set('Cámara desactivada');
-  }
-
-  sendTranslation(): void {
-    const translation = this.currentTranslation().trim();
-
-    if (!translation) {
-      return;
-    }
-
-    this.translationSent.emit(translation);
+    this.transmissionStatus.set('Transmisión detenida');
   }
 
   ngOnDestroy(): void {
@@ -203,6 +198,10 @@ export class SalaCameraComponent implements AfterViewInit, OnDestroy {
       if (count === 0) {
         this.handStatus.set('Sin manos detectadas');
         this.currentTranslation.set('');
+        this.candidateTranslation = '';
+        this.candidateSince = 0;
+        this.lastEmittedTranslation = '';
+        this.transmissionStatus.set('Esperando una seña estable...');
       } else {
         this.handStatus.set(count === 1 ? 'Mano detectada' : 'Dos manos detectadas');
 
@@ -213,7 +212,9 @@ export class SalaCameraComponent implements AfterViewInit, OnDestroy {
           return `${side}: ${this.classifyHand(landmarks)}`;
         });
 
-        this.currentTranslation.set(labels.join(' · '));
+        const translation = labels.join(' · ');
+        this.currentTranslation.set(translation);
+        this.processAutomaticTranslation(translation, now);
       }
 
       const drawingUtils = new DrawingUtils(context);
@@ -236,6 +237,37 @@ export class SalaCameraComponent implements AfterViewInit, OnDestroy {
 
     this.scheduleNextDetection();
   };
+
+  private processAutomaticTranslation(translation: string, now: number): void {
+    if (translation !== this.candidateTranslation) {
+      this.candidateTranslation = translation;
+      this.candidateSince = now;
+      this.transmissionStatus.set('Confirmando seña...');
+      return;
+    }
+
+    if (now - this.candidateSince < this.stabilityTime) {
+      return;
+    }
+
+    if (translation === this.lastEmittedTranslation) {
+      this.transmissionStatus.set('Traducción compartida en tiempo real');
+      return;
+    }
+
+    this.lastEmittedTranslation = translation;
+    this.transmissionStatus.set('Traducción compartida en tiempo real');
+    this.translationSent.emit(translation);
+  }
+
+  private resetRecognition(): void {
+    this.detectedHands.set(0);
+    this.currentTranslation.set('');
+    this.handStatus.set('Sin manos detectadas');
+    this.candidateTranslation = '';
+    this.candidateSince = 0;
+    this.lastEmittedTranslation = '';
+  }
 
   private classifyHand(
     landmarks: { x: number; y: number; z: number }[]
