@@ -3,6 +3,7 @@ import { App } from './app';
 import { InicioComponent } from './pages/inicio/inicio';
 import { SalaComponent } from './pages/sala/sala';
 import { LlamadaComponent } from './pages/llamada/llamada';
+import { DatasetComponent } from './pages/dataset/dataset';
 import { LoginComponent } from './pages/login/login';
 import { RegistroComponent } from './pages/registro/registro';
 
@@ -31,6 +32,11 @@ export const routes: Routes = [
     path: 'llamada',
     component: LlamadaComponent,
     title: 'SignaText | Videollamada'
+  },
+  {
+    path: 'dataset',
+    component: DatasetComponent,
+    title: 'SignaText | Recolección de dataset'
   },
   {
     path: 'login',

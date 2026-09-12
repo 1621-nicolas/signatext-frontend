@@ -1,0 +1,382 @@
+<section class="dataset-page">
+  <div class="page-header">
+    <div class="header-content">
+      <h1>Recolección de dataset LSP</h1>
+      <p class="page-description">
+        Captura muestras de Lengua de Señas Peruana para entrenar el modelo de reconocimiento.
+      </p>
+    </div>
+    
+    <div class="stats-row">
+      <div class="stat-card">
+        <span class="stat-value">{{ stats().totalSamples }}</span>
+        <span class="stat-label">Muestras</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-value">{{ stats().uniqueLabels }}</span>
+        <span class="stat-label">Señas</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-value">{{ stats().uniqueParticipants }}</span>
+        <span class="stat-label">Personas</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-value">{{ stats().totalFrames }}</span>
+        <span class="stat-label">Frames</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="dataset-layout">
+    <aside class="config-panel">
+      
+      <div class="panel-section">
+        <div class="section-header" (click)="toggleCatalog()">
+          <h2>Catálogo de señas</h2>
+          <span class="toggle-icon">{{ showCatalog() ? '▼' : '▶' }}</span>
+        </div>
+        
+        @if (showCatalog()) {
+          <div class="catalog-container">
+            <div class="catalog-tabs">
+              @for (cat of catalogCategories(); track cat) {
+                <button 
+                  type="button" 
+                  class="tab-btn" 
+                  [class.active]="selectedCategory() === cat"
+                  (click)="selectCategory(cat)">
+                  {{ cat }}
+                </button>
+              }
+            </div>
+            
+            <input 
+              type="text" 
+              class="catalog-search" 
+              [(ngModel)]="searchQuery" 
+              placeholder="Buscar seña..." 
+            />
+            
+            <div class="catalog-list">
+              @for (sign of filteredCatalog(); track sign.label) {
+                <button 
+                  type="button" 
+                  class="sign-item"
+                  [class.selected]="selectedSign()?.label === sign.label"
+                  (click)="selectSignFromCatalog(sign)">
+                  <span class="sign-label">{{ sign.label }}</span>
+                  @if (sign.isStatic) {
+                    <span class="sign-type" title="Seña estática">✋</span>
+                  } @else {
+                    <span class="sign-type" title="Seña dinámica">👋</span>
+                  }
+                </button>
+              }
+              @if (filteredCatalog().length === 0) {
+                <div class="empty-list">No se encontraron señas</div>
+              }
+            </div>
+          </div>
+        }
+      </div>
+
+      <div class="panel-section">
+        <h2>Configuración de captura</h2>
+
+        @if (selectedSign()) {
+          <div class="guide-card">
+            <h4>💡 Guía: {{ selectedSign()!.label }}</h4>
+            <p>{{ selectedSign()!.description }}</p>
+            <div class="guide-notes">{{ selectedSign()!.referenceNotes }}</div>
+            <div class="guide-meta">
+              <span class="badge">{{ selectedSign()!.requiresTwoHands ? 'Dos manos' : 'Una mano' }}</span>
+              <span class="badge">{{ selectedSign()!.isStatic ? 'Estática' : 'Dinámica' }}</span>
+            </div>
+          </div>
+        }
+
+        <div class="field-group">
+          <label for="label-input">Etiqueta de la seña</label>
+          <input
+            id="label-input"
+            type="text"
+            [(ngModel)]="label"
+            placeholder="Ej: HOLA, A, 1"
+            [disabled]="datasetService.isCapturing() || countdownActive()"
+            autocomplete="off"
+            spellcheck="false"
+            class="uppercase-input"
+          />
+          @if (label.trim().length > 0) {
+            <span class="field-hint">
+              {{ datasetService.getSampleCountForLabel(label) }} muestra(s) de esta etiqueta
+            </span>
+          }
+        </div>
+
+        <div class="field-group">
+          <label for="participant-input">ID del participante</label>
+          <input
+            id="participant-input"
+            type="text"
+            [(ngModel)]="participantId"
+            placeholder="Ej: P01"
+            [disabled]="datasetService.isCapturing() || countdownActive()"
+            autocomplete="off"
+            spellcheck="false"
+            class="uppercase-input"
+          />
+        </div>
+
+        <div class="field-group">
+          <label>Mano dominante</label>
+          <div class="toggle-group">
+            <button 
+              type="button" 
+              class="toggle-btn" 
+              [class.active]="dominantHand === 'Derecha'"
+              (click)="dominantHand = 'Derecha'"
+              [disabled]="datasetService.isCapturing() || countdownActive()">
+              Derecha
+            </button>
+            <button 
+              type="button" 
+              class="toggle-btn" 
+              [class.active]="dominantHand === 'Izquierda'"
+              (click)="dominantHand = 'Izquierda'"
+              [disabled]="datasetService.isCapturing() || countdownActive()">
+              Izquierda
+            </button>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label>Duración de captura</label>
+          <div class="toggle-group">
+            <button 
+              type="button" 
+              class="toggle-btn" 
+              [class.active]="captureDuration === 2"
+              (click)="captureDuration = 2"
+              [disabled]="datasetService.isCapturing() || countdownActive()">
+              2s
+            </button>
+            <button 
+              type="button" 
+              class="toggle-btn" 
+              [class.active]="captureDuration === 3"
+              (click)="captureDuration = 3"
+              [disabled]="datasetService.isCapturing() || countdownActive()">
+              3s
+            </button>
+            <button 
+              type="button" 
+              class="toggle-btn" 
+              [class.active]="captureDuration === 5"
+              (click)="captureDuration = 5"
+              [disabled]="datasetService.isCapturing() || countdownActive()">
+              5s
+            </button>
+          </div>
+        </div>
+
+        <div class="action-buttons">
+          <button
+            type="button"
+            class="btn btn-camera"
+            (click)="toggleCamera()"
+            [disabled]="datasetService.isCapturing() || countdownActive()"
+          >
+            {{ cameraActive() ? '⏹ Desactivar cámara' : '📷 Activar cámara' }}
+          </button>
+
+          @if (!datasetService.isCapturing() && !countdownActive()) {
+            <button
+              type="button"
+              class="btn btn-capture"
+              (click)="beginCapture()"
+              [disabled]="!canStartCapture()"
+            >
+              🔴 Iniciar captura
+            </button>
+          }
+
+          @if (datasetService.isCapturing()) {
+            <button
+              type="button"
+              class="btn btn-stop"
+              (click)="cancelCapture()"
+            >
+              ⏹ Detener captura
+            </button>
+          }
+        </div>
+      </div>
+    </aside>
+
+    <main class="camera-panel">
+      <div class="status-bar">
+        <div class="status-item">
+          <span class="status-dot" [class.active]="cameraActive()"></span>
+          {{ cameraStatus() }}
+        </div>
+        <div class="status-item">
+          <span class="status-dot" [class.active]="modelStatus() === 'Detector listo'"></span>
+          {{ modelStatus() }}
+        </div>
+        <div class="status-item">
+          <span class="status-dot" [class.active]="detectedHands() > 0"></span>
+          {{ handStatus() }}
+        </div>
+      </div>
+
+      <div
+        class="camera-container"
+        [class.capturing]="datasetService.isCapturing()"
+        [class.countdown]="countdownActive()"
+      >
+        <video
+          #video
+          playsinline
+          muted
+          [style.display]="cameraActive() ? 'block' : 'none'"
+        ></video>
+        <canvas
+          #canvas
+          [style.display]="cameraActive() ? 'block' : 'none'"
+        ></canvas>
+
+        @if (!cameraActive()) {
+          <div class="camera-placeholder">
+            <span class="placeholder-icon">📷</span>
+            <span>Activa la cámara para comenzar</span>
+          </div>
+        }
+
+        @if (countdownActive() && countdownValue() > 0) {
+          <div class="countdown-overlay" aria-live="assertive">
+            <span class="countdown-number">{{ countdownValue() }}</span>
+          </div>
+        }
+
+        @if (datasetService.isCapturing()) {
+          <div class="capture-indicator" aria-live="polite">
+            <span class="rec-dot"></span>
+            <span>CAPTURANDO</span>
+            <span class="frame-count">{{ datasetService.currentFrameCount() }} frames</span>
+          </div>
+
+          <div class="progress-bar-container">
+            <div
+              class="progress-bar-fill"
+              [style.width.%]="getProgressPercent()"
+              role="progressbar"
+              [attr.aria-valuenow]="getProgressPercent()"
+              aria-valuemin="0"
+              aria-valuemax="100"
+            ></div>
+          </div>
+        }
+      </div>
+
+      @if (lastCapturedSampleId().length > 0) {
+        <div class="capture-success" role="status">
+          Muestra <strong>{{ lastCapturedSampleId() }}</strong> guardada
+          con {{ datasetService.currentFrameCount() || 'varios' }} frames.
+        </div>
+      }
+    </main>
+  </div>
+
+  <section class="samples-section">
+    <div class="samples-header">
+      <h2>Muestras recolectadas ({{ datasetService.samples().length }})</h2>
+      
+      <div class="samples-toolbar">
+        <input 
+          type="text" 
+          class="table-search" 
+          [(ngModel)]="tableSearchQuery" 
+          placeholder="Filtrar tabla..." 
+        />
+        <div class="samples-actions">
+          <input type="file" #fileInput (change)="onFileSelected($event)" accept=".json" style="display: none" />
+          <button type="button" class="btn btn-outline" (click)="triggerFileInput()">
+            📁 Importar
+          </button>
+          @if (datasetService.samples().length > 0) {
+            <button type="button" class="btn btn-export" (click)="datasetService.exportAsJson()">
+              📥 Exportar
+            </button>
+            <button type="button" class="btn btn-danger" (click)="datasetService.clearAll()">
+              🗑 Limpiar
+            </button>
+          }
+        </div>
+      </div>
+    </div>
+
+    @if (datasetService.samples().length === 0) {
+      <div class="empty-message">
+        <span class="empty-icon">📊</span>
+        <p>No hay muestras capturadas en esta sesión.</p>
+        <p class="empty-sub">Comienza a capturar o importa un dataset existente.</p>
+      </div>
+    } @else {
+      <div class="samples-table-wrapper">
+        <table class="samples-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Categoría</th>
+              <th>Etiqueta</th>
+              <th>Participante</th>
+              <th>Mano</th>
+              <th>Frames</th>
+              <th>Duración</th>
+              <th>Fecha</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (sample of filteredSamples(); track sample.id) {
+              <tr>
+                <td class="cell-id">{{ sample.id }}</td>
+                <td>
+                  <span class="category-badge {{ getBadgeClass(getCategoryForLabel(sample.label)) }}">
+                    {{ getCategoryForLabel(sample.label) }}
+                  </span>
+                </td>
+                <td><strong>{{ sample.label }}</strong></td>
+                <td>{{ sample.participantId }}</td>
+                <td>{{ sample.dominantHand }}</td>
+                <td>{{ sample.totalFrames }}</td>
+                <td>{{ formatDuration(sample.durationMs) }}</td>
+                <td class="cell-date">{{ formatDate(sample.capturedAt) }}</td>
+                <td class="cell-actions">
+                  <button
+                    type="button"
+                    class="btn-icon"
+                    title="Descargar muestra"
+                    (click)="datasetService.exportSingleSample(sample.id)"
+                  >📥</button>
+                  <button
+                    type="button"
+                    class="btn-icon btn-icon-danger"
+                    title="Eliminar muestra"
+                    (click)="datasetService.deleteSample(sample.id)"
+                  >🗑</button>
+                </td>
+              </tr>
+            }
+            @if (filteredSamples().length === 0) {
+              <tr>
+                <td colspan="9" class="text-center py-4">No se encontraron muestras que coincidan con la búsqueda.</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+</section>
