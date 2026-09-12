@@ -41,7 +41,7 @@
     </div>
   </div>
 
-  <div class="translation-preview">
+  <div class="translation-preview" aria-live="polite">
     <span class="preview-label">Reconocimiento actual</span>
 
     @if (currentTranslation()) {
@@ -50,16 +50,35 @@
       <span class="empty-text">Esperando una seña...</span>
     }
 
+    <div class="automatic-sharing">
+      <span class="live-dot" aria-hidden="true"></span>
+      <strong>{{ transmissionStatus() }}</strong>
+    </div>
+
+    <small>
+      No necesitas pulsar ningún botón. Cuando SignaText confirma una detección, la comparte automáticamente con la otra persona.
+    </small>
+  </div>
+
+  <div class="translation-preview" aria-live="polite">
+    <span class="preview-label">Secuencia en construcción</span>
+
+    @if (sequencePreview()) {
+      <strong>{{ sequencePreview() }}</strong>
+    } @else {
+      <span class="empty-text">Las señas confirmadas se irán acumulando aquí.</span>
+    }
+
     <button
       type="button"
-      class="send-translation"
-      (click)="sendTranslation()"
-      [disabled]="!currentTranslation()">
-      Enviar traducción a la otra persona
+      class="secondary"
+      (click)="clearSequence()"
+      [disabled]="recognizedSequence().length === 0">
+      Limpiar secuencia
     </button>
 
     <small>
-      Esta etapa utiliza reconocimiento de configuración de manos. El vocabulario LSP entrenado se conectará a este mismo envío en el siguiente avance del modelo.
+      Esta secuencia todavía usa configuraciones técnicas de mano. Cuando conectemos el vocabulario LSP validado, este mismo bloque formará palabras y oraciones.
     </small>
   </div>
 </section>

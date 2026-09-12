@@ -6,6 +6,7 @@ import {
   OnDestroy,
   Output,
   ViewChild,
+  inject,
   signal
 } from '@angular/core';
 import {
@@ -13,6 +14,7 @@ import {
   FilesetResolver,
   HandLandmarker
 } from '@mediapipe/tasks-vision';
+import { LspSequenceService } from '../../core/services/lsp-sequence.service';
 
 @Component({
   selector: 'app-sala-camera',
@@ -30,11 +32,16 @@ export class SalaCameraComponent implements AfterViewInit, OnDestroy {
   @Output()
   translationSent = new EventEmitter<string>();
 
+  private readonly lspSequenceService = inject(LspSequenceService);
+
   cameraStatus = signal('Cámara desactivada');
   modelStatus = signal('Cargando detector...');
   handStatus = signal('Sin manos detectadas');
   detectedHands = signal(0);
   currentTranslation = signal('');
+  transmissionStatus = signal('Esperando una seña...');
+  recognizedSequence = signal<string[]>([]);
+  sequencePreview = signal('');
 
   private stream: MediaStream | null = null;
   private handLandmarker: HandLandmarker | null = null;
@@ -42,7 +49,13 @@ export class SalaCameraComponent implements AfterViewInit, OnDestroy {
   private detectionRunning = false;
   private lastVideoTime = -1;
   private lastDetectionTime = 0;
+  private lastEmittedTranslation = '';
+  private recentTranslations: string[] = [];
+
   private readonly detectionInterval = 50;
+  private readonly consensusWindow = 5;
+  private readonly consensusRequired = 3;
+  private readonly maxSequenceTokens = 12;
 
   async ngAfterViewInit(): Promise<void> {
     await this.initializeHandLandmarker();
@@ -54,6 +67,11 @@ export class SalaCameraComponent implements AfterViewInit, OnDestroy {
     }
 
     try {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        this.cameraStatus.set('El navegador no permite utilizar la cámara');
+        return;
+      }
+
       this.cameraStatus.set('Solicitando permiso...');
 
       this.stream = await navigator.mediaDevices.getUserMedia({
@@ -71,6 +89,7 @@ export class SalaCameraComponent implements AfterViewInit, OnDestroy {
       await video.play();
 
       this.cameraStatus.set('Cámara activa');
+      this.transmissionStatus.set('Esperando una seña...');
       this.startDetectionIfReady();
     } catch (error) {
       console.error('ERROR DE CÁMARA EN SALA:', error);
@@ -102,20 +121,14 @@ export class SalaCameraComponent implements AfterViewInit, OnDestroy {
       canvas.getContext('2d')?.clearRect(0, 0, canvas.width, canvas.height);
     }
 
-    this.detectedHands.set(0);
-    this.currentTranslation.set('');
-    this.handStatus.set('Sin manos detectadas');
+    this.resetRecognition();
     this.cameraStatus.set('Cámara desactivada');
+    this.transmissionStatus.set('Transmisión detenida');
   }
 
-  sendTranslation(): void {
-    const translation = this.currentTranslation().trim();
-
-    if (!translation) {
-      return;
-    }
-
-    this.translationSent.emit(translation);
+  clearSequence(): void {
+    this.recognizedSequence.set([]);
+    this.sequencePreview.set('');
   }
 
   ngOnDestroy(): void {
@@ -177,7 +190,10 @@ export class SalaCameraComponent implements AfterViewInit, OnDestroy {
 
     const now = performance.now();
 
-    if (now - this.lastDetectionTime < this.detectionInterval || video.currentTime === this.lastVideoTime) {
+    if (
+      now - this.lastDetectionTime < this.detectionInterval ||
+      video.currentTime === this.lastVideoTime
+    ) {
       this.scheduleNextDetection();
       return;
     }
@@ -203,17 +219,30 @@ export class SalaCameraComponent implements AfterViewInit, OnDestroy {
       if (count === 0) {
         this.handStatus.set('Sin manos detectadas');
         this.currentTranslation.set('');
+        this.recentTranslations = [];
+        this.lastEmittedTranslation = '';
+        this.transmissionStatus.set('Esperando una seña...');
       } else {
         this.handStatus.set(count === 1 ? 'Mano detectada' : 'Dos manos detectadas');
 
-        const labels = results.landmarks.map((landmarks, index) => {
+        const displayLabels: string[] = [];
+        const semanticLabels: string[] = [];
+
+        results.landmarks.forEach((landmarks, index) => {
           const side = results.handedness[index]?.[0]?.categoryName === 'Left'
             ? 'Izquierda'
             : 'Derecha';
-          return `${side}: ${this.classifyHand(landmarks)}`;
+          const shape = this.classifyHand(landmarks);
+
+          displayLabels.push(`${side}: ${shape}`);
+          semanticLabels.push(shape);
         });
 
-        this.currentTranslation.set(labels.join(' · '));
+        const displayTranslation = displayLabels.join(' · ');
+        const semanticTranslation = semanticLabels.sort().join(' + ');
+
+        this.currentTranslation.set(displayTranslation);
+        this.processAutomaticTranslation(semanticTranslation);
       }
 
       const drawingUtils = new DrawingUtils(context);
@@ -236,6 +265,67 @@ export class SalaCameraComponent implements AfterViewInit, OnDestroy {
 
     this.scheduleNextDetection();
   };
+
+  private processAutomaticTranslation(translation: string): void {
+    if (!translation) {
+      return;
+    }
+
+    this.recentTranslations.push(translation);
+
+    if (this.recentTranslations.length > this.consensusWindow) {
+      this.recentTranslations.shift();
+    }
+
+    const counts = new Map<string, number>();
+    for (const item of this.recentTranslations) {
+      counts.set(item, (counts.get(item) ?? 0) + 1);
+    }
+
+    let winner = '';
+    let winnerCount = 0;
+
+    for (const [item, count] of counts) {
+      if (count > winnerCount) {
+        winner = item;
+        winnerCount = count;
+      }
+    }
+
+    if (winnerCount < this.consensusRequired) {
+      this.transmissionStatus.set('Confirmando seña...');
+      return;
+    }
+
+    if (winner === this.lastEmittedTranslation) {
+      this.transmissionStatus.set('Traducción compartida en tiempo real');
+      return;
+    }
+
+    this.lastEmittedTranslation = winner;
+    this.addToSequence(winner);
+    this.transmissionStatus.set('Traducción compartida en tiempo real');
+    this.translationSent.emit(winner);
+  }
+
+  private addToSequence(token: string): void {
+    const next = this.lspSequenceService.appendToken(
+      this.recognizedSequence(),
+      token,
+      this.maxSequenceTokens
+    );
+
+    this.recognizedSequence.set(next);
+    this.sequencePreview.set(this.lspSequenceService.buildDisplay(next));
+  }
+
+  private resetRecognition(): void {
+    this.detectedHands.set(0);
+    this.currentTranslation.set('');
+    this.handStatus.set('Sin manos detectadas');
+    this.recentTranslations = [];
+    this.lastEmittedTranslation = '';
+  }
 
   private classifyHand(
     landmarks: { x: number; y: number; z: number }[]

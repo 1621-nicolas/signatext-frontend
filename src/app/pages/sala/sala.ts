@@ -4,6 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { SalaCameraComponent } from '../../components/sala-camera/sala-camera';
 import { AuthService } from '../../core/services/auth.service';
+import { LspSequenceService } from '../../core/services/lsp-sequence.service';
+import { SalaRealtimeService } from '../../core/services/sala-realtime.service';
 import { MensajeSala, SalaPrivada, SalaService } from '../../core/services/sala.service';
 
 @Component({
@@ -16,6 +18,8 @@ import { MensajeSala, SalaPrivada, SalaService } from '../../core/services/sala.
 export class SalaComponent implements OnDestroy {
   readonly authService = inject(AuthService);
   private readonly salaService = inject(SalaService);
+  private readonly realtimeService = inject(SalaRealtimeService);
+  private readonly lspSequenceService = inject(LspSequenceService);
 
   sala = signal<SalaPrivada | null>(null);
   mensajes = signal<MensajeSala[]>([]);
@@ -23,11 +27,13 @@ export class SalaComponent implements OnDestroy {
   enviando = signal(false);
   error = signal('');
   aviso = signal('');
+  realtimeStatus = signal('Desconectado');
 
   codigoIngreso = '';
   textoMensaje = '';
 
-  private pollingId: number | null = null;
+  private roomPollingId: number | null = null;
+  private messageFallbackPollingId: number | null = null;
 
   crearSala(): void {
     if (!this.authService.isLoggedIn() || this.cargando()) {
@@ -91,19 +97,33 @@ export class SalaComponent implements OnDestroy {
   }
 
   enviarTraduccionCamara(texto: string): void {
+    const sala = this.sala();
     const contenido = texto.trim();
 
-    if (!this.sala() || !contenido || this.enviando()) {
+    if (!sala || !contenido) {
       return;
     }
 
-    this.enviarContenido(contenido, 'TRADUCCION', false);
+    this.salaService.enviarMensaje(sala.codigo, contenido, 'TRADUCCION').subscribe({
+      next: mensaje => this.agregarMensajeSiNoExiste(mensaje),
+      error: response => {
+        this.error.set(this.mensajeError(response?.status));
+      }
+    });
   }
 
   traduccionesRecibidas(): MensajeSala[] {
     return this.mensajes().filter(
       mensaje => mensaje.tipo === 'TRADUCCION' && !this.esMio(mensaje)
     );
+  }
+
+  secuenciaRemota(): string {
+    return this.lspSequenceService.buildDisplay(this.tokensRemotos());
+  }
+
+  textoLiteralRemoto(): string {
+    return this.lspSequenceService.buildLiteralText(this.tokensRemotos());
   }
 
   mensajesTexto(): MensajeSala[] {
@@ -140,6 +160,15 @@ export class SalaComponent implements OnDestroy {
 
   ngOnDestroy(): void {
     this.detenerPolling();
+    this.realtimeService.desconectar();
+  }
+
+  private tokensRemotos(): string[] {
+    return this.lspSequenceService.buildRemoteSequence(
+      this.mensajes(),
+      this.authService.usuario()?.idUsuario,
+      12
+    );
   }
 
   private enviarContenido(
@@ -157,15 +186,12 @@ export class SalaComponent implements OnDestroy {
     this.enviando.set(true);
 
     this.salaService.enviarMensaje(sala.codigo, contenido, tipo).subscribe({
-      next: () => {
+      next: mensaje => {
         this.enviando.set(false);
         if (limpiarTexto) {
           this.textoMensaje = '';
         }
-        this.cargarMensajes();
-        if (tipo === 'TRADUCCION') {
-          this.aviso.set('Traducción enviada a la otra persona.');
-        }
+        this.agregarMensajeSiNoExiste(mensaje);
       },
       error: response => {
         this.enviando.set(false);
@@ -178,22 +204,61 @@ export class SalaComponent implements OnDestroy {
     this.sala.set(sala);
     this.codigoIngreso = sala.codigo;
     this.cargarMensajes();
-    this.iniciarPolling();
+    this.iniciarPollingParticipantes();
+    this.iniciarPollingMensajesFallback();
+    this.conectarTiempoReal(sala.codigo);
   }
 
-  private iniciarPolling(): void {
-    this.detenerPolling();
-    this.pollingId = window.setInterval(() => {
+  private conectarTiempoReal(codigo: string): void {
+    this.realtimeService.conectar(
+      codigo,
+      mensaje => this.agregarMensajeSiNoExiste(mensaje),
+      estado => {
+        this.realtimeStatus.set(estado);
+
+        if (estado === 'Tiempo real conectado') {
+          this.detenerPollingMensajesFallback();
+        } else {
+          this.iniciarPollingMensajesFallback();
+        }
+      }
+    );
+  }
+
+  private iniciarPollingParticipantes(): void {
+    if (this.roomPollingId !== null) {
+      return;
+    }
+
+    this.roomPollingId = window.setInterval(() => {
       this.actualizarSala();
-      this.cargarMensajes();
     }, 1500);
   }
 
-  private detenerPolling(): void {
-    if (this.pollingId !== null) {
-      window.clearInterval(this.pollingId);
-      this.pollingId = null;
+  private iniciarPollingMensajesFallback(): void {
+    if (this.messageFallbackPollingId !== null) {
+      return;
     }
+
+    this.messageFallbackPollingId = window.setInterval(() => {
+      this.cargarMensajes();
+    }, 800);
+  }
+
+  private detenerPollingMensajesFallback(): void {
+    if (this.messageFallbackPollingId !== null) {
+      window.clearInterval(this.messageFallbackPollingId);
+      this.messageFallbackPollingId = null;
+    }
+  }
+
+  private detenerPolling(): void {
+    if (this.roomPollingId !== null) {
+      window.clearInterval(this.roomPollingId);
+      this.roomPollingId = null;
+    }
+
+    this.detenerPollingMensajesFallback();
   }
 
   private actualizarSala(): void {
@@ -218,8 +283,19 @@ export class SalaComponent implements OnDestroy {
     });
   }
 
+  private agregarMensajeSiNoExiste(mensaje: MensajeSala): void {
+    const actuales = this.mensajes();
+    if (actuales.some(item => item.idMensaje === mensaje.idMensaje)) {
+      return;
+    }
+
+    this.mensajes.set([...actuales, mensaje]);
+  }
+
   private limpiarSala(): void {
     this.detenerPolling();
+    this.realtimeService.desconectar();
+    this.realtimeStatus.set('Desconectado');
     this.sala.set(null);
     this.mensajes.set([]);
     this.textoMensaje = '';

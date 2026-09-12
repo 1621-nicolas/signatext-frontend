@@ -35,7 +35,7 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**", "/api/health", "/api/dataset/**").permitAll()
+                        .requestMatchers("/api/auth/**", "/api/health").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
@@ -48,7 +48,7 @@ public class SecurityConfig {
             @Value("${app.cors.allowed-origins}") String allowedOrigins
     ) {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(
+        configuration.setAllowedOriginPatterns(
                 Arrays.stream(allowedOrigins.split(","))
                         .map(String::trim)
                         .filter(value -> !value.isBlank())

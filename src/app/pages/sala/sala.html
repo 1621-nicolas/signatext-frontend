@@ -3,7 +3,7 @@
     <span class="eyebrow">Sala privada</span>
     <h1>Comunicación mediante cámara y traducción</h1>
     <p>
-      Cada participante utiliza la cámara de su propio dispositivo. SignaText procesa las manos de forma local y comparte únicamente la traducción con la otra persona.
+      Cada participante utiliza la cámara de su propio dispositivo. SignaText procesa las manos de forma local y comparte la traducción automáticamente en tiempo real.
     </p>
   </section>
 
@@ -71,6 +71,10 @@
         @if (sala()!.participantes.length < 2) {
           <span class="waiting-chip">Esperando a la otra persona...</span>
         }
+
+        <span class="waiting-chip" aria-live="polite">
+          {{ realtimeStatus() }}
+        </span>
       </div>
 
       <div class="translation-workspace">
@@ -84,14 +88,27 @@
           <div class="remote-header">
             <span class="eyebrow">La otra persona</span>
             <h3 id="remote-title">Traducciones recibidas</h3>
-            <p>Las señas reconocidas en el otro dispositivo aparecerán aquí como texto.</p>
+            <p>Las señas reconocidas en el otro dispositivo aparecen aquí automáticamente mediante WebSocket.</p>
           </div>
+
+          @if (secuenciaRemota()) {
+            <article class="translation-message">
+              <div class="translation-meta">
+                <strong>Secuencia reconocida</strong>
+                <span>En construcción</span>
+              </div>
+              <p>{{ secuenciaRemota() }}</p>
+              <small>
+                Lectura literal provisional: {{ textoLiteralRemoto() }}
+              </small>
+            </article>
+          }
 
           <div class="translation-feed">
             @if (traduccionesRecibidas().length === 0) {
               <div class="empty-translation">
                 <strong>Esperando traducciones</strong>
-                <span>Cuando la otra persona use su cámara y envíe una traducción, aparecerá en este panel.</span>
+                <span>Cuando la otra persona active su cámara y realice una seña estable, la traducción aparecerá aquí sin pulsar ningún botón.</span>
               </div>
             }
 
